@@ -11,15 +11,21 @@ import time
 urllib3.disable_warnings()
 
 def usage():
-    print("Usage goes here!")
+    sys.stderr.write("Usage: rbk_bulk_restore.py -i file -p protocol [-hDt] [-c creds] [-r location] rubrik\n")
+    sys.stderr.write("-h | --help : Prints usage.\n")
+    sys.stderr.write("-i | --input : Specify file that contains files to restore.\n")
+    sys.stderr.write("-p | --protocol : Specify protocol: nfs smb|cifs\n")
+    sys.stderr.write("-r | --restore_to : Specify where to restore the files [server:share:folder]\n")
+    sys.stderr.write("-D | --debug : Prints debug information.  Troubleshooting use only\n")
+    sys.stderr.write("-t | --test : Test Mode.  Does everything but the actual restore\n")
+    sys.stderr.write("-c | --creds : Allows cluster name and password [user:password].\n")
+    sys.stderr.write("rubrik : Name/IP of Rubrik Cluster\n")
+    sys.stderr.write("-i, -p and rubrik are required.  All others are optional\n")
+    sys.stderr.write("User will be prompted for any required information not provided in CLI\n")
     exit(0)
 
 def dprint(message):
     if DEBUG:
-        print(message)
-
-def vprint(message):
-    if VERBOSE:
         print(message)
 
 def python_input(message):
@@ -72,7 +78,6 @@ def find_file(file, fs_list, snap_list, rubrik):
 
 if __name__ == "__main__":
     DEBUG = False
-    VERBOSE = False
     TEST = False
     rubrik_node = ""
     user = ""
@@ -89,15 +94,12 @@ if __name__ == "__main__":
     protocol = ""
     delim = ""
 
-    optlist, args = getopt.getopt(sys.argv[1:], 'hDc:i:r:vp:t', ['help', 'debug', 'creds=', 'input=', 'restore_to=', 'verbose', 'protocol=', 'test'])
+    optlist, args = getopt.getopt(sys.argv[1:], 'hDc:i:r:p:t', ['help', 'debug', 'creds=', 'input=', 'restore_to=', 'protocol=', 'test'])
     for opt, a in optlist:
         if opt in ('-h', '--help'):
             usage()
         if opt in ('-D', '--debug'):
             DEBUG = True
-            VERBOSE = True
-        if opt in ('-v' , '--verbose'):
-            VERBOSE = True
         if opt in ('-c', '--creds'):
             user, password = a.split(':')
         if opt in ('-i', '--input'):
@@ -246,4 +248,3 @@ if __name__ == "__main__":
                         print ("Status: " + job_status)
                     done = True
 
-##TODO Usage and Cleanup
