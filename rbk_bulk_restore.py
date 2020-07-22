@@ -46,6 +46,8 @@ def find_file(file, fs_list, snap_list, rubrik):
         search = rubrik.get('v1', '/fileset/' + str(fs) + '/search?path=' + file)
         dprint(search)
         if search['total'] == 1:
+            if search['data'][0]['path'] != file:
+                return("","")
             dprint("Found " + file + " in " + fs_list[fs]['name'])
             inst += 1
             fileset = fs
@@ -71,6 +73,7 @@ def find_file(file, fs_list, snap_list, rubrik):
 if __name__ == "__main__":
     DEBUG = False
     VERBOSE = False
+    TEST = False
     rubrik_node = ""
     user = ""
     password = ""
@@ -86,7 +89,7 @@ if __name__ == "__main__":
     protocol = ""
     delim = ""
 
-    optlist, args = getopt.getopt(sys.argv[1:], 'hDc:i:r:vp:', ['help', 'debug', 'creds=', 'input=', 'restore_to=', 'verbose', 'protocol='])
+    optlist, args = getopt.getopt(sys.argv[1:], 'hDc:i:r:vp:t', ['help', 'debug', 'creds=', 'input=', 'restore_to=', 'verbose', 'protocol=', 'test'])
     for opt, a in optlist:
         if opt in ('-h', '--help'):
             usage()
@@ -105,6 +108,8 @@ if __name__ == "__main__":
             protocol = a.upper()
             if protocol == "CIFS":
                 protocol = "SMB"
+        if opt in ('-t', '--test'):
+            TEST = True
     if infile == "":
         usage()
     try:
@@ -135,12 +140,17 @@ if __name__ == "__main__":
     if not restore_host or not restore_share or not restore_path:
         sys.stderr.write("Restore Location Malfomed. Format is host:share:path\n")
         exit(3)
+    if not restore_path.startswith(delim):
+        restore_path = delim + restore_path
     restore_host_id, restore_share_id = valid_restore_location(restore_host, restore_share, rubrik)
     if not restore_share_id:
         sys.stderr.write("Can't find restore location: " + restore_host + " : " + restore_share + "\n")
         exit(4)
     done = False
+    if TEST:
+        print("TESTING...no Restores will be done.")
     offset = 0
+    print("Gathering info from cluster...")
     while not done:
         fs_data = rubrik.get('v1', '/fileset?offset=' + str(offset))
         for fs in fs_data['data']:
@@ -160,8 +170,10 @@ if __name__ == "__main__":
             done = True
     dprint(fs_list)
     dprint(snap_list)
+    file_count = 0
     with open(infile) as fp:
         file = fp.readline()
+        print("Searching for files in backups.....")
         while file:
             if file.startswith("#") or file == "":
                 file = fp.readline()
@@ -175,6 +187,7 @@ if __name__ == "__main__":
             dprint ("FS: " + file_fs)
             dprint ("SNAP: " + file_snap)
             if file_fs:
+                file_count += 1
                 try:
                     restore_job[file_fs].append({'file': file, 'snapshot': file_snap})
                 except KeyError:
@@ -182,8 +195,17 @@ if __name__ == "__main__":
                     restore_job[file_fs].append({'file': file, 'snapshot': file_snap})
             else:
                 failed_files.append(file)
+            if file_count % 100 == 0:
+                sys.stdout.write(". ")
+                sys.stdout.flush()
             file = fp.readline()
     fp.close()
+    print()
+    print ("Found " + str(file_count) + " files")
+    if len(failed_files):
+        print("Failed to find:")
+        for f in failed_files:
+            print (f)
     dprint("JOBS: " + str(restore_job))
     dprint("FAILS: " + str(failed_files))
     dprint("FS_RESTORE: " + str(restore_job))
@@ -197,30 +219,31 @@ if __name__ == "__main__":
             except KeyError:
                 restore_files[f['snapshot']] = []
                 restore_files[f['snapshot']].append({'srcPath': f['file'], 'dstPath': restore_path})
+        restore_count = 0
         for job in restore_files.keys():
+            restore_count += 1
+            print("    Starting Restore " + str(restore_count) + "/" + str(len(restore_files)))
             restore_config = {'exportPathPairs': restore_files[job], 'hostId': restore_host_id, 'shareId': restore_share_id}
             dprint("RES_CONFIG: " + str(restore_config))
-            restore = rubrik.post('internal', '/fileset/snapshot/' + str(job) + "/export_files", restore_config)
-            job_status_url = str(restore['links'][0]['href']).split('/')
-            job_status_path = "/" + "/".join(job_status_url[5:])
-            done = False
-            while not done:
-                restore_job_status = rubrik.get('v1', job_status_path)
-                job_status = restore_job_status['status']
-                dprint ("Status = " + job_status)
-                if job_status in ['RUNNING', 'QUEUED', 'ACQUIRING', 'FINISHING']:
-                    print("Progress: " + str(restore_job_status['progress']) + "%")
-                    time.sleep(5)
-                    continue
-                elif job_status == "SUCCEEDED":
-                    print ("Done")
-                elif job_status == "TO_CANCEL" or 'endTime' in job_status:
-                    sys.stderr.write("Job ended with status: " + job_status + "\n")
-                else:
-                    print ("Status: " + job_status)
-                done = True
+            if not TEST:
+                restore = rubrik.post('internal', '/fileset/snapshot/' + str(job) + "/export_files", restore_config)
+                job_status_url = str(restore['links'][0]['href']).split('/')
+                job_status_path = "/" + "/".join(job_status_url[5:])
+                done = False
+                while not done:
+                    restore_job_status = rubrik.get('v1', job_status_path)
+                    job_status = restore_job_status['status']
+                    dprint ("Status = " + job_status)
+                    if job_status in ['RUNNING', 'QUEUED', 'ACQUIRING', 'FINISHING']:
+                        print("    Progress: " + str(restore_job_status['progress']) + "%")
+                        time.sleep(5)
+                        continue
+                    elif job_status == "SUCCEEDED":
+                        print ("Done")
+                    elif job_status == "TO_CANCEL" or 'endTime' in job_status:
+                        sys.stderr.write("Job ended with status: " + job_status + "\n")
+                    else:
+                        print ("Status: " + job_status)
+                    done = True
 
-##TODO Restore
-##TODO Exact Match vs partial?
-##TODO Report Only Flag
 ##TODO Usage and Cleanup
