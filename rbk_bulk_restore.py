@@ -188,8 +188,8 @@ if __name__ == "__main__":
             dprint("File:" + file)
             dprint ("FS: " + file_fs)
             dprint ("SNAP: " + file_snap)
+            file_count += 1
             if file_fs:
-                file_count += 1
                 try:
                     restore_job[file_fs].append({'file': file, 'snapshot': file_snap})
                 except KeyError:
