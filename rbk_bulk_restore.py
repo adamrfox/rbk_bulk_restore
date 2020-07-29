@@ -142,7 +142,7 @@ if __name__ == "__main__":
     if not restore_host or not restore_share or not restore_path:
         sys.stderr.write("Restore Location Malfomed. Format is host:share:path\n")
         exit(3)
-    if restore_path.startswith('/'):
+    if restore_share.startswith('/'):
         delim = "/"
         protocol = "NFS"
     else:
