@@ -244,7 +244,7 @@ if __name__ == "__main__":
                 restore_count = 0
                 for res_path in restore_path_job_files.keys():
                     restore_count += 1
-                    print ("    Starting restore " + str(restore_count) + "/" + str(len([*restore_path_job_files])) + " from backup taken at " + str(snap_list[job]))
+                    print ("    Starting restore " + str(restore_count) + "/" + str(len(list(restore_path_job_files))) + " from backup taken at " + str(snap_list[job]))
                     restore_config = {'exportPathPairs': restore_path_job_files[res_path], 'hostId': restore_host_id,
                                   'shareId': restore_share_id}
                     dprint("RES_CONFIG: " + str(restore_config))
