@@ -11,7 +11,7 @@ import time
 urllib3.disable_warnings()
 
 def usage():
-    sys.stderr.write("Usage: rbk_bulk_restore.py -i file -p protocol [-hDt] [-c creds] [-r location] rubrik\n")
+    sys.stderr.write("Usage: rbk_bulk_restore.py -i file -p protocol [-hDtv] [-c creds] [-r location] rubrik\n")
     sys.stderr.write("-h | --help : Prints usage.\n")
     sys.stderr.write("-i | --input : Specify file that contains files to restore.\n")
     sys.stderr.write("-p | --protocol : Specify protocol: nfs smb|cifs\n")
@@ -19,6 +19,7 @@ def usage():
     sys.stderr.write("-D | --debug : Prints debug information.  Troubleshooting use only\n")
     sys.stderr.write("-t | --test : Test Mode.  Does everything but the actual restore\n")
     sys.stderr.write("-c | --creds : Allows cluster name and password [user:password].\n")
+    sys.stderr.write("-v | --verbose : Prints the filenames in each backup\n")
     sys.stderr.write("rubrik : Name/IP of Rubrik Cluster\n")
     sys.stderr.write("-i, -p and rubrik are required.  All others are optional\n")
     sys.stderr.write("User will be prompted for any required information not provided in CLI\n")
@@ -26,6 +27,10 @@ def usage():
 
 def dprint(message):
     if DEBUG:
+        print(message)
+
+def vprint(message):
+    if VERBOSE:
         print(message)
 
 def python_input(message):
@@ -79,6 +84,7 @@ def find_file(file, fs_list, snap_list, rubrik):
 if __name__ == "__main__":
     DEBUG = False
     TEST = False
+    VERBOSE = False
     rubrik_node = ""
     user = ""
     password = ""
@@ -94,12 +100,13 @@ if __name__ == "__main__":
     protocol = ""
     delim = ""
 
-    optlist, args = getopt.getopt(sys.argv[1:], 'hDc:i:r:p:t', ['help', 'debug', 'creds=', 'input=', 'restore_to=', 'protocol=', 'test'])
+    optlist, args = getopt.getopt(sys.argv[1:], 'hDc:i:r:p:tv', ['help', 'debug', 'creds=', 'input=', 'restore_to=', 'protocol=', 'test', 'verbose'])
     for opt, a in optlist:
         if opt in ('-h', '--help'):
             usage()
         if opt in ('-D', '--debug'):
             DEBUG = True
+            VERBOSE = True
         if opt in ('-c', '--creds'):
             user, password = a.split(':')
         if opt in ('-i', '--input'):
@@ -112,6 +119,8 @@ if __name__ == "__main__":
                 protocol = "SMB"
         if opt in ('-t', '--test'):
             TEST = True
+        if opt in ('-v', '--verbose'):
+            VERBOSE = True
     if infile == "":
         usage()
     try:
@@ -224,7 +233,10 @@ if __name__ == "__main__":
         restore_count = 0
         for job in restore_files.keys():
             restore_count += 1
-            print("    Starting Restore " + str(restore_count) + "/" + str(len(restore_files)))
+            print("    Starting Restore " + str(restore_count) + "/" + str(len(restore_files)) + " from backup taken at " + str(snap_list[job]))
+            if VERBOSE:
+                for file in restore_files[job]:
+                    print("        " + file['srcPath'])
             restore_config = {'exportPathPairs': restore_files[job], 'hostId': restore_host_id, 'shareId': restore_share_id}
             dprint("RES_CONFIG: " + str(restore_config))
             if not TEST:
@@ -248,3 +260,4 @@ if __name__ == "__main__":
                         print ("Status: " + job_status)
                     done = True
 
+##TODO Restore with paths.
