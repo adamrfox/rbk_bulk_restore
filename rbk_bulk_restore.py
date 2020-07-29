@@ -144,8 +144,10 @@ if __name__ == "__main__":
         exit(3)
     if restore_path.startswith('/'):
         delim = "/"
+        protocol = "NFS"
     else:
         delim = "\\"
+        protocol = "SMB"
     if not restore_path.startswith(delim):
         restore_path = delim + restore_path
     restore_host_id, restore_share_id = valid_restore_location(restore_host, restore_share, rubrik)
