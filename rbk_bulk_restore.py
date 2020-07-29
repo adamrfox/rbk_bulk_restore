@@ -231,20 +231,29 @@ if __name__ == "__main__":
                 restore_files[f['snapshot']].append({'srcPath': f['file']})
         for job in restore_files.keys():
             restore_path_job_files = {}
+            restore_list = {}
             for file in restore_files[job]:
-                vprint("        " + file['srcPath'])
                 file_path = get_path(file['srcPath'], delim)
+                if VERBOSE:
+                    try:
+                        restore_list[file_path].append(file['srcPath'])
+                    except KeyError:
+                        restore_list[file_path] = []
+                        restore_list[file_path].append(file['srcPath'])
                 try:
                     restore_path_job_files[file_path].append({'srcPath': file['srcPath'], 'dstPath': restore_path + file_path})
                 except KeyError:
                     restore_path_job_files[file_path] = []
                     restore_path_job_files[file_path].append({'srcPath': file['srcPath'], 'dstPath': restore_path + file_path})
             dprint("RPJ: " + str(restore_path_job_files))
-            if not TEST:
-                restore_count = 0
-                for res_path in restore_path_job_files.keys():
-                    restore_count += 1
-                    print ("    Starting restore " + str(restore_count) + "/" + str(len(list(restore_path_job_files))) + " from backup taken at " + str(snap_list[job]))
+            restore_count = 0
+            for res_path in restore_path_job_files.keys():
+                restore_count += 1
+                print ("    Starting restore " + str(restore_count) + "/" + str(len(list(restore_path_job_files))) + " from backup taken at " + str(snap_list[job]))
+                if VERBOSE:
+                    for f in restore_list[res_path]:
+                        vprint("        " + f)
+                if not TEST:
                     restore_config = {'exportPathPairs': restore_path_job_files[res_path], 'hostId': restore_host_id,
                                   'shareId': restore_share_id}
                     dprint("RES_CONFIG: " + str(restore_config))
