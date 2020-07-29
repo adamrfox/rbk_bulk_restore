@@ -14,14 +14,13 @@ def usage():
     sys.stderr.write("Usage: rbk_bulk_restore.py -i file -p protocol [-hDtv] [-c creds] [-r location] rubrik\n")
     sys.stderr.write("-h | --help : Prints usage.\n")
     sys.stderr.write("-i | --input : Specify file that contains files to restore.\n")
-    sys.stderr.write("-p | --protocol : Specify protocol: nfs smb|cifs\n")
     sys.stderr.write("-r | --restore_to : Specify where to restore the files [server:share:folder]\n")
     sys.stderr.write("-D | --debug : Prints debug information.  Troubleshooting use only\n")
     sys.stderr.write("-t | --test : Test Mode.  Does everything but the actual restore\n")
     sys.stderr.write("-c | --creds : Allows cluster name and password [user:password].\n")
     sys.stderr.write("-v | --verbose : Prints the filenames in each backup\n")
     sys.stderr.write("rubrik : Name/IP of Rubrik Cluster\n")
-    sys.stderr.write("-i, -p and rubrik are required.  All others are optional\n")
+    sys.stderr.write("-i and rubrik are required.  All others are optional\n")
     sys.stderr.write("User will be prompted for any required information not provided in CLI\n")
     exit(0)
 
@@ -46,6 +45,11 @@ def valid_restore_location(host, share, rubrik):
         if sh['hostname'] == host and sh['exportPoint'] == share:
             return(sh['hostId'], sh['id'])
     return("", "")
+
+def get_path(filename, delim):
+    f_fields = filename.split(delim)
+    f_fields.pop()
+    return (delim.join(f_fields))
 
 def find_file(file, fs_list, snap_list, rubrik):
     fileset = ""
@@ -100,7 +104,7 @@ if __name__ == "__main__":
     protocol = ""
     delim = ""
 
-    optlist, args = getopt.getopt(sys.argv[1:], 'hDc:i:r:p:tv', ['help', 'debug', 'creds=', 'input=', 'restore_to=', 'protocol=', 'test', 'verbose'])
+    optlist, args = getopt.getopt(sys.argv[1:], 'hDc:i:r:tv', ['help', 'debug', 'creds=', 'input=', 'restore_to=',  'test', 'verbose'])
     for opt, a in optlist:
         if opt in ('-h', '--help'):
             usage()
@@ -113,10 +117,6 @@ if __name__ == "__main__":
             infile = a
         if opt in ('-r', '--restore_to'):
             restore_location = a
-        if opt in ('-p', '--protocol'):
-            protocol = a.upper()
-            if protocol == "CIFS":
-                protocol = "SMB"
         if opt in ('-t', '--test'):
             TEST = True
         if opt in ('-v', '--verbose'):
@@ -131,15 +131,6 @@ if __name__ == "__main__":
         user = python_input("User: ")
     if not password:
         password = getpass.getpass("Password:")
-    if not protocol:
-        protocol = python_input("Protocol: ").upper()
-    if protocol == "NFS":
-        delim = "/"
-    elif protocol == "SMB":
-        delim = "\\"
-    else:
-        sys.stderr.write("Protocol must be nfs, smb, or cifs\n")
-        exit (5)
     if not restore_location:
         restore_location = python_input("Restore Location [host:share:path]: ")
     rubrik = rubrik_cdm.Connect(rubrik_node, user, password)
@@ -151,6 +142,10 @@ if __name__ == "__main__":
     if not restore_host or not restore_share or not restore_path:
         sys.stderr.write("Restore Location Malfomed. Format is host:share:path\n")
         exit(3)
+    if restore_path.startswith('/'):
+        delim = "/"
+    else:
+        delim = "\\"
     if not restore_path.startswith(delim):
         restore_path = delim + restore_path
     restore_host_id, restore_share_id = valid_restore_location(restore_host, restore_share, rubrik)
@@ -219,45 +214,55 @@ if __name__ == "__main__":
             print (f)
     dprint("JOBS: " + str(restore_job))
     dprint("FAILS: " + str(failed_files))
-    dprint("FS_RESTORE: " + str(restore_job))
 
     for fs_res in restore_job.keys():
         print("Restoring " + str(len(restore_job[fs_res])) + " files from " + fs_list[fs_res]['hostName'] + ":" + fs_list[fs_res]['name'])
         restore_files = {}
         for f in restore_job[fs_res]:
             try:
-                restore_files[f['snapshot']].append({'srcPath': f['file'], 'dstPath': restore_path})
+                restore_files[f['snapshot']].append({'srcPath': f['file']})
             except KeyError:
                 restore_files[f['snapshot']] = []
-                restore_files[f['snapshot']].append({'srcPath': f['file'], 'dstPath': restore_path})
+                restore_files[f['snapshot']].append({'srcPath': f['file']})
         restore_count = 0
         for job in restore_files.keys():
             restore_count += 1
+            restore_path_job_files = {}
             print("    Starting Restore " + str(restore_count) + "/" + str(len(restore_files)) + " from backup taken at " + str(snap_list[job]))
-            if VERBOSE:
-                for file in restore_files[job]:
-                    print("        " + file['srcPath'])
-            restore_config = {'exportPathPairs': restore_files[job], 'hostId': restore_host_id, 'shareId': restore_share_id}
-            dprint("RES_CONFIG: " + str(restore_config))
+            for file in restore_files[job]:
+                vprint("        " + file['srcPath'])
+                file_path = get_path(file['srcPath'], delim)
+                try:
+                    restore_path_job_files[file_path].append({'srcPath': file['srcPath'], 'dstPath': restore_path + file_path})
+                except KeyError:
+                    restore_path_job_files[file_path] = []
+                    restore_path_job_files[file_path].append({'srcPath': file['srcPath'], 'dstPath': restore_path + file_path})
+            dprint("RPJ: " + str(restore_path_job_files))
             if not TEST:
-                restore = rubrik.post('internal', '/fileset/snapshot/' + str(job) + "/export_files", restore_config)
-                job_status_url = str(restore['links'][0]['href']).split('/')
-                job_status_path = "/" + "/".join(job_status_url[5:])
-                done = False
-                while not done:
-                    restore_job_status = rubrik.get('v1', job_status_path)
-                    job_status = restore_job_status['status']
-                    dprint ("Status = " + job_status)
-                    if job_status in ['RUNNING', 'QUEUED', 'ACQUIRING', 'FINISHING']:
-                        print("    Progress: " + str(restore_job_status['progress']) + "%")
-                        time.sleep(5)
-                        continue
-                    elif job_status == "SUCCEEDED":
-                        print ("Done")
-                    elif job_status == "TO_CANCEL" or 'endTime' in job_status:
-                        sys.stderr.write("Job ended with status: " + job_status + "\n")
-                    else:
-                        print ("Status: " + job_status)
-                    done = True
+                for res_path in restore_path_job_files.keys():
+
+                    restore_config = {'exportPathPairs': restore_path_job_files[res_path], 'hostId': restore_host_id,
+                                  'shareId': restore_share_id}
+                    dprint("RES_CONFIG: " + str(restore_config))
+                    restore = rubrik.post('internal', '/fileset/snapshot/' + str(job) + "/export_files", restore_config)
+                    job_status_url = str(restore['links'][0]['href']).split('/')
+                    job_status_path = "/" + "/".join(job_status_url[5:])
+                    done = False
+                    while not done:
+                        restore_job_status = rubrik.get('v1', job_status_path)
+                        job_status = restore_job_status['status']
+                        dprint ("Status = " + job_status)
+                        if job_status in ['RUNNING', 'QUEUED', 'ACQUIRING', 'FINISHING']:
+                            print("    Progress: " + str(restore_job_status['progress']) + "%")
+                            time.sleep(5)
+                            continue
+                        elif job_status == "SUCCEEDED":
+                            print ("Done")
+                        elif job_status == "TO_CANCEL" or 'endTime' in job_status:
+                            sys.stderr.write("Job ended with status: " + job_status + "\n")
+                        else:
+                            print ("Status: " + job_status)
+                        done = True
 
 ##TODO Restore with paths.
+##TODO Discover Protocol
