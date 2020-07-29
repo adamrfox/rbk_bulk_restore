@@ -203,7 +203,10 @@ if __name__ == "__main__":
                     restore_job[file_fs].append({'file': file, 'snapshot': file_snap})
             else:
                 failed_files.append(file)
-            if file_count % 100 == 0:
+            if file_count % 1000 == 0
+                sys.stdout.write("* ")
+                sys.stdout.flush()
+            elif file_count % 100 == 0:
                 sys.stdout.write(". ")
                 sys.stdout.flush()
             file = fp.readline()
