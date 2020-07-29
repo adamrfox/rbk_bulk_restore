@@ -203,7 +203,7 @@ if __name__ == "__main__":
                     restore_job[file_fs].append({'file': file, 'snapshot': file_snap})
             else:
                 failed_files.append(file)
-            if file_count % 1000 == 0
+            if file_count % 1000 == 0:
                 sys.stdout.write("* ")
                 sys.stdout.flush()
             elif file_count % 100 == 0:
@@ -229,11 +229,8 @@ if __name__ == "__main__":
             except KeyError:
                 restore_files[f['snapshot']] = []
                 restore_files[f['snapshot']].append({'srcPath': f['file']})
-        restore_count = 0
         for job in restore_files.keys():
-            restore_count += 1
             restore_path_job_files = {}
-            print("    Starting Restore " + str(restore_count) + "/" + str(len(restore_files)) + " from backup taken at " + str(snap_list[job]))
             for file in restore_files[job]:
                 vprint("        " + file['srcPath'])
                 file_path = get_path(file['srcPath'], delim)
@@ -244,8 +241,10 @@ if __name__ == "__main__":
                     restore_path_job_files[file_path].append({'srcPath': file['srcPath'], 'dstPath': restore_path + file_path})
             dprint("RPJ: " + str(restore_path_job_files))
             if not TEST:
+                restore_count = 0
                 for res_path in restore_path_job_files.keys():
-
+                    restore_count += 1
+                    print ("    Starting restore " + str(restore_count) + "/" + str(len([*restore_path_job_files])) + " from backup taken at " + str(snap_list[job]))
                     restore_config = {'exportPathPairs': restore_path_job_files[res_path], 'hostId': restore_host_id,
                                   'shareId': restore_share_id}
                     dprint("RES_CONFIG: " + str(restore_config))
@@ -259,7 +258,7 @@ if __name__ == "__main__":
                         dprint ("Status = " + job_status)
                         if job_status in ['RUNNING', 'QUEUED', 'ACQUIRING', 'FINISHING']:
                             print("    Progress: " + str(restore_job_status['progress']) + "%")
-                            time.sleep(5)
+                            time.sleep(10)
                             continue
                         elif job_status == "SUCCEEDED":
                             print ("Done")
@@ -268,6 +267,3 @@ if __name__ == "__main__":
                         else:
                             print ("Status: " + job_status)
                         done = True
-
-##TODO Restore with paths.
-##TODO Discover Protocol
