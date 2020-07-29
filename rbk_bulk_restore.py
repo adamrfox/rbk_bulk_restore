@@ -104,7 +104,7 @@ if __name__ == "__main__":
     protocol = ""
     delim = ""
 
-    optlist, args = getopt.getopt(sys.argv[1:], 'hDc:i:r:tv', ['help', 'debug', 'creds=', 'input=', 'restore_to=',  'test', 'verbose'])
+    optlist, args = getopt.getopt(sys.argv[1:], 'hDc:i:r:p:tv', ['help', 'debug', 'creds=', 'input=', 'restore_to=',  'test', 'protocol=', 'verbose'])
     for opt, a in optlist:
         if opt in ('-h', '--help'):
             usage()
@@ -117,6 +117,8 @@ if __name__ == "__main__":
             infile = a
         if opt in ('-r', '--restore_to'):
             restore_location = a
+        if opt in ('-p', '--protocol')
+            protocol = a
         if opt in ('-t', '--test'):
             TEST = True
         if opt in ('-v', '--verbose'):
@@ -142,18 +144,25 @@ if __name__ == "__main__":
     if not restore_host or not restore_share or not restore_path:
         sys.stderr.write("Restore Location Malfomed. Format is host:share:path\n")
         exit(3)
-    if restore_share.startswith('/'):
-        delim = "/"
-        protocol = "NFS"
-    else:
-        delim = "\\"
-        protocol = "SMB"
+    done = False
+    while not done:
+        if restore_share.startswith('/') or protocol.upper() == "NFS":
+            delim = "/"
+            protocol = "NFS"
+            done = True
+        elif not restore_share.startswith('/') or protocol.upper() in ['CIFS', 'SMB']:
+            delim = "\\"
+            protocol = "SMB"
+            done = True
+        else:
+            protocol = python_input("Protocol: ")
     if not restore_path.startswith(delim):
         restore_path = delim + restore_path
-    restore_host_id, restore_share_id = valid_restore_location(restore_host, restore_share, rubrik)
-    if not restore_share_id:
-        sys.stderr.write("Can't find restore location: " + restore_host + " : " + restore_share + "\n")
-        exit(4)
+    if not TEST:
+        restore_host_id, restore_share_id = valid_restore_location(restore_host, restore_share, rubrik)
+        if not restore_share_id:
+            sys.stderr.write("Can't find restore location: " + restore_host + " : " + restore_share + "\n")
+            exit(4)
     done = False
     if TEST:
         print("TESTING...no Restores will be done.")
