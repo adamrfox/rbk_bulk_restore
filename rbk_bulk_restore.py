@@ -117,7 +117,7 @@ if __name__ == "__main__":
             infile = a
         if opt in ('-r', '--restore_to'):
             restore_location = a
-        if opt in ('-p', '--protocol')
+        if opt in ('-p', '--protocol'):
             protocol = a
         if opt in ('-t', '--test'):
             TEST = True
@@ -133,17 +133,19 @@ if __name__ == "__main__":
         user = python_input("User: ")
     if not password:
         password = getpass.getpass("Password:")
-    if not restore_location:
-        restore_location = python_input("Restore Location [host:share:path]: ")
-    rubrik = rubrik_cdm.Connect(rubrik_node, user, password)
-    try:
-        (restore_host, restore_share, restore_path) = restore_location.split(':')
-    except:
-        sys.stderr.write("Restore Location Malfomed. Format is host:share:path\n")
-        exit(3)
-    if not restore_host or not restore_share or not restore_path:
-        sys.stderr.write("Restore Location Malfomed. Format is host:share:path\n")
-        exit(3)
+    if not TEST:
+        if not restore_location:
+            restore_location = python_input("Restore Location [host:share:path]: ")
+        try:
+            (restore_host, restore_share, restore_path) = restore_location.split(':')
+        except:
+            sys.stderr.write("Restore Location Malfomed. Format is host:share:path\n")
+            exit(3)
+        if not restore_host or not restore_share or not restore_path:
+            sys.stderr.write("Restore Location Malfomed. Format is host:share:path\n")
+            exit(3)
+    if TEST and not protocol:
+        protocol = python_input("Protocol: ")
     done = False
     while not done:
         if restore_share.startswith('/') or protocol.upper() == "NFS":
@@ -158,6 +160,7 @@ if __name__ == "__main__":
             protocol = python_input("Protocol: ")
     if not restore_path.startswith(delim):
         restore_path = delim + restore_path
+    rubrik = rubrik_cdm.Connect(rubrik_node, user, password)
     if not TEST:
         restore_host_id, restore_share_id = valid_restore_location(restore_host, restore_share, rubrik)
         if not restore_share_id:
