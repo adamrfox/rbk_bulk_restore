@@ -8,17 +8,24 @@ Note: The requirements came from a specific customer but it could be useful to o
 
 Syntax is as follows:
 <pre>
-Usage: rbk_bulk_restore.py -i file -p protocol [-hDt] [-c creds] [-r location] rubrik
+Usage: rbk_bulk_restore.py -i file -p protocol [-hDtv] [-c creds] [-r location] rubrik
 -h | --help : Prints usage.
 -i | --input : Specify file that contains files to restore.
--p | --protocol : Specify protocol: nfs smb|cifs
 -r | --restore_to : Specify where to restore the files [server:share:folder]
 -D | --debug : Prints debug information.  Troubleshooting use only
 -t | --test : Test Mode.  Does everything but the actual restore
+-p | --protocol : Specify a prtocol.  Only needed for test mode without -r
 -c | --creds : Allows cluster name and password [user:password].
+-v | --verbose : Prints the filenames in each backup
 rubrik : Name/IP of Rubrik Cluster
--i, -p and rubrik are required.  All others are optional
-User will be prompted for any required information not provided in CLI
-</pre>
+-i and rubrik are required.  All others are optional
+User will be prompted for any required information not provided in CLI</pre>
 
 The script works with Python 2 or 3.  Most of the libraries are standard however the Rubrik Python SDK is required to run the script.  This can be easily installed via pip:  pip install rubrik-cdm
+
+The script first gathers fileset and backup information from the Rubrik.  Then it searches all of those filesets and backups to find the files listed in the input file.  While this scan is going on, the script will output a . for every 100 files and a * every 1000 files to show progress.
+After that, the script will bunch up the files based on fileset, backup, and path.  Those groups of files will then be sent in serial to the Rurbik clsuter to restore those files.  The restores will create the directory structure in the restore location.
+
+There is a "test mode" which will do everything execpt do the actual restore.  When this is used, specifying a restore location is optional since a real restore won't happen.  If no restore location is specified for a test run, the protocol (NFS or SMB/CIFS) must be specified.  Anytime a restore location is specified, the protocol is discovered based on the name of the share (a share name that starts with / is presumed to be NFS, otherwise it's SMB).
+
+There is a verbose mode that will show the naems of the files associated with each restore session.  Otherwise, the script will just say how many files it is backing up from each fileset.
