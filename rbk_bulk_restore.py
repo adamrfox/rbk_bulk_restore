@@ -17,6 +17,7 @@ def usage():
     sys.stderr.write("-r | --restore_to : Specify where to restore the files [server:share:folder]\n")
     sys.stderr.write("-D | --debug : Prints debug information.  Troubleshooting use only\n")
     sys.stderr.write("-t | --test : Test Mode.  Does everything but the actual restore\n")
+    sys.stderr.write("-p | --protocol : Specify a prtocol.  Only needed for test mode without -r\n")
     sys.stderr.write("-c | --creds : Allows cluster name and password [user:password].\n")
     sys.stderr.write("-v | --verbose : Prints the filenames in each backup\n")
     sys.stderr.write("rubrik : Name/IP of Rubrik Cluster\n")
