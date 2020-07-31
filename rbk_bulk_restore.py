@@ -133,9 +133,8 @@ if __name__ == "__main__":
         user = python_input("User: ")
     if not password:
         password = getpass.getpass("Password:")
-    if not TEST:
-        if not restore_location:
-            restore_location = python_input("Restore Location [host:share:path]: ")
+    if not restore_location and not TEST:
+        restore_location = python_input("Restore Location [host:share:path]: ")
         try:
             (restore_host, restore_share, restore_path) = restore_location.split(':')
         except:
@@ -144,20 +143,21 @@ if __name__ == "__main__":
         if not restore_host or not restore_share or not restore_path:
             sys.stderr.write("Restore Location Malfomed. Format is host:share:path\n")
             exit(3)
-    if TEST and not protocol:
+    elif TEST and restore_location:
+        try:
+            (restore_host, restore_share, restore_path) = restore_location.split(':')
+        except:
+            sys.stderr.write("Restore Location Malfomed. Format is host:share:path\n")
+            exit(3)
+    if TEST and not restore_share and not protocol:
         protocol = python_input("Protocol: ")
     done = False
-    while not done:
-        if restore_share.startswith('/') or protocol.upper() == "NFS":
-            delim = "/"
-            protocol = "NFS"
-            done = True
-        elif not restore_share.startswith('/') or protocol.upper() in ['CIFS', 'SMB']:
-            delim = "\\"
-            protocol = "SMB"
-            done = True
-        else:
-            protocol = python_input("Protocol: ")
+    if restore_share.startswith('/') or protocol.upper() == "NFS":
+        delim = "/"
+        protocol = "NFS"
+    elif not restore_share.startswith('/') or protocol.upper() in ['CIFS', 'SMB']:
+        delim = "\\"
+        protocol = "SMB"
     if not restore_path.startswith(delim):
         restore_path = delim + restore_path
     rubrik = rubrik_cdm.Connect(rubrik_node, user, password)
