@@ -50,7 +50,7 @@ def find_snap_id(bucket_data, timestamp):
         snap_dt_naive = datetime.strptime(snap_data['date'][:-5], "%Y-%m-%dT%H:%M:%S")
         snap_epoch = (snap_dt - epoch).total_seconds()
         dprint("TARGET: " + str(timestamp) + " // SNAP: " + str(snap_epoch) + " : " + snap_id + " @ " + snap_data['date'])
-        if snap_epoch > timestamp:
+        if snap_epoch >= timestamp:
             return(snap_id, snap_dt_naive)
     return ("")
 
