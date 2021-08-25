@@ -11,15 +11,17 @@ import pytz
 urllib3.disable_warnings()
 
 def usage():
-    print ("Usage goes here!")
+    sys.stderr.write("Usage: splunk_rbk_bulk_restore.py [-Dh] [-c creds] [-t token] -i input_file rubrik\n")
+    sys.stderr.write("-h | --help : Prints this message\n")
+    sys.stderr.write("-D | --DEBUG : Debug mode.  Provides verbose output for debugging\n")
+    sys.stderr.write("-c | --creds= : Specify the Rubrik credentials [user:password]\n")
+    sys.stderr.write("-t | --token= : Specify a Rubrik API token\n")
+    sys.stderr.write("-i | --infile= : Input file used for bulk restores [required]\n")
+    sys.stderr.write("rubrik : Hostname or IP of a Rubrik cluster\n")
     exit(0)
 
 def dprint(message):
     if DEBUG:
-        print(message)
-
-def vprint(message):
-    if VERBOSE:
         print(message)
 
 def python_input(message):
@@ -56,7 +58,6 @@ def find_snap_id(bucket_data, timestamp):
 
 if __name__ == "__main__":
     DEBUG = False
-    VERBOSE = False
     rubrik_node = ""
     user = ""
     password = ""
@@ -68,13 +69,10 @@ if __name__ == "__main__":
     epoch = datetime.strptime("1970-01-01T00:00:00.000+0000", "%Y-%m-%dT%H:%M:%S.000%z")
     restore_job_list = []
 
-    optlist, args = getopt.getopt(sys.argv[1:], 'Dvhc:t:i:', ['--DEBUG', '--verbose', '--help', '--creds=', '--token=', '--infile='])
+    optlist, args = getopt.getopt(sys.argv[1:], 'Dhc:t:i:', ['--DEBUG', '--verbose', '--help', '--creds=', '--token=', '--infile='])
     for opt, a in optlist:
         if opt in ('-D', '--DEBUG'):
             DEBUG = True
-            VERBOSE = True
-        if opt in ('-v', '--verbose'):
-            VERBOSE = True
         if opt in ('-h', '--help'):
             usage()
         if opt in ('-c', '--creds'):
@@ -84,6 +82,8 @@ if __name__ == "__main__":
         if opt in ('-i', '--infile'):
             infile = a
 
+    if not infile:
+        usage()
     job_list = get_from_file(infile)
     dprint (job_list)
     try:
