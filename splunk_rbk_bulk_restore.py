@@ -7,6 +7,7 @@ import getpass
 import urllib3
 from datetime import datetime
 import time
+import pytz
 urllib3.disable_warnings()
 
 def usage():
@@ -46,10 +47,11 @@ def find_snap_id(bucket_data, timestamp):
         snap_data = rubrik.get('v1', '/fileset/snapshot/' + snap['snapshotId'] + '?verbose=false')
         snap_id = snap_data['id']
         snap_dt = datetime.strptime(snap_data['date'], "%Y-%m-%dT%H:%M:%S.000%z")
+        snap_dt_naive = datetime.strptime(snap_data['date'][:-5], "%Y-%m-%dT%H:%M:%S")
         snap_epoch = (snap_dt - epoch).total_seconds()
-        dprint("TARGET: " + str(timestamp) + " // SNAP: " + str(snap_epoch) + " : " + snap_id)
+        dprint("TARGET: " + str(timestamp) + " // SNAP: " + str(snap_epoch) + " : " + snap_id + " @ " + snap_data['date'])
         if snap_epoch > timestamp:
-            return(snap_id, snap_data['date'])
+            return(snap_id, snap_dt_naive)
     return ("")
 
 if __name__ == "__main__":
@@ -96,6 +98,9 @@ if __name__ == "__main__":
         rubrik = rubrik_cdm.Connect(rubrik_node, user, password)
     else:
         rubrik = rubrik_cdm.Connect(rubrik_node, api_token=token)
+    rubrik_config = rubrik.get('v1', '/cluster/me', timeout=timeout)
+    rubrik_tz = rubrik_config['timezone']['timezone']
+    local_zone = pytz.timezone(rubrik_tz)
     for job in job_list:
         print("Processing bucket: " + job['src_host'] + " : " + job['bucket'])
         try:
@@ -116,15 +121,18 @@ if __name__ == "__main__":
         elif bucket_data['total'] > 1:
             sys.stderr.write("Ambiguous bucket path [" + str(bucket_data['total'] + "]: " + job['src_host'] + " : " + job['bucket']) + "\n")
             continue
-        (snap_id, snap_date) = find_snap_id(bucket_data, target_epoch)
+        (snap_id, snap_dt) = find_snap_id(bucket_data, target_epoch)
+        snap_dt = pytz.utc.localize(snap_dt).astimezone(local_zone)
+        snap_dt_s = snap_dt.strftime('%Y-%m-%d %H:%M:%S')
         if snap_id == "":
             sys.stderr.write("Can't find a valid backup for " + job['bucket'] + "\n")
             continue
-        res_job = {'snap_id': snap_id, 'bucket': job['bucket'], 'src_path': bucket_data['data'][0]['path'], 'dest_path': job['restore_path'], 'src_host': job['src_host'], 'restore_host': job['restore_host']}
+        res_job = {'snap_id': snap_id, 'bucket': job['bucket'], 'src_path': bucket_data['data'][0]['path'], 'dest_path': job['restore_path'],
+                   'src_host': job['src_host'], 'restore_host': job['restore_host'], 'time': snap_dt_s}
         restore_job_list.append(res_job)
     dprint(restore_job_list)
     for restore in restore_job_list:
-        print("Restoring " + restore['src_host'] + " : " + restore['bucket'] + " from " + snap_date)
+        print("Restoring " + restore['src_host'] + " : " + restore['bucket'] + " from " + restore['time'])
         if restore['src_host'] == restore['restore_host']:
             payload = {'restoreConfig': [{'path': restore['src_path'], 'restorePath': restore['dest_path']}], 'ignoreErrors': True}
             res_data = rubrik.post('internal', '/fileset/snapshot/' + restore['snap_id'] + '/restore_files', payload, timeout=timeout)
