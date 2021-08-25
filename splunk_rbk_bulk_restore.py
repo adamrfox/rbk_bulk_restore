@@ -49,7 +49,7 @@ def find_snap_id(bucket_data, timestamp):
         snap_epoch = (snap_dt - epoch).total_seconds()
         dprint("TARGET: " + str(timestamp) + " // SNAP: " + str(snap_epoch) + " : " + snap_id)
         if snap_epoch > timestamp:
-            return(snap_id)
+            return(snap_id, snap_data['date'])
     return ("")
 
 if __name__ == "__main__":
@@ -116,7 +116,7 @@ if __name__ == "__main__":
         elif bucket_data['total'] > 1:
             sys.stderr.write("Ambiguous bucket path [" + str(bucket_data['total'] + "]: " + job['src_host'] + " : " + job['bucket']) + "\n")
             continue
-        snap_id = find_snap_id(bucket_data, target_epoch)
+        (snap_id, snap_date) = find_snap_id(bucket_data, target_epoch)
         if snap_id == "":
             sys.stderr.write("Can't find a valid backup for " + job['bucket'] + "\n")
             continue
@@ -124,7 +124,7 @@ if __name__ == "__main__":
         restore_job_list.append(res_job)
     dprint(restore_job_list)
     for restore in restore_job_list:
-        print("Restoring " + restore['src_host'] + " : " + restore['bucket'])
+        print("Restoring " + restore['src_host'] + " : " + restore['bucket'] + " from " + snap_date)
         if restore['src_host'] == restore['restore_host']:
             payload = {'restoreConfig': [{'path': restore['src_path'], 'restorePath': restore['dest_path']}], 'ignoreErrors': True}
             res_data = rubrik.post('internal', '/fileset/snapshot/' + restore['snap_id'] + '/restore_files', payload, timeout=timeout)
