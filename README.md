@@ -1,5 +1,7 @@
 # rbk_bulk_restore
-A script to do a bulk restore based on a list
+Scripts to do a bulk restore based on a list
+
+rbk_bulk_restore.py
 
 This goal of this script is to take a list of files from a NAS backup, find them on the Rubrik, then restore those files to a specific location.
 The files could live across multiple shares, filesets, and individual backups.  It will always restore the latest copy.
@@ -29,3 +31,10 @@ After that, the script will bunch up the files based on fileset, backup, and pat
 There is a "test mode" which will do everything execpt do the actual restore.  When this is used, specifying a restore location is optional since a real restore won't happen.  If no restore location is specified for a test run, the protocol (NFS or SMB/CIFS) must be specified.  Anytime a restore location is specified, the protocol is discovered based on the name of the share (a share name that starts with / is presumed to be NFS, otherwise it's SMB).
 
 There is a verbose mode that will show the naems of the files associated with each restore session.  Otherwise, the script will just say how many files it is backing up from each fileset.
+
+
+----
+
+splunk_rbk_bulk_restore.py
+
+This script was bulit for a specific customer so may not be as useful out of the box as others.  It reads a specific file format specified by the customer to find a specific directory and restore it.  Therefore, it is not recommended to run this in a generic environment, but feel free to use the code for other projects.  That's what open source is all about.
