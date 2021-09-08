@@ -46,7 +46,7 @@ def get_from_file(file):
 
 def find_snap_id(bucket_data, timestamp):
     for snap in bucket_data['data'][0]['fileVersions']:
-        snap_data = rubrik.get('v1', '/fileset/snapshot/' + snap['snapshotId'] + '?verbose=false')
+        snap_data = rubrik.get('v1', '/fileset/snapshot/' + snap['snapshotId'] + '?verbose=false', timeout=timeout)
         snap_id = snap_data['id']
         snap_dt = datetime.strptime(snap_data['date'], "%Y-%m-%dT%H:%M:%S.000%z")
         snap_dt_naive = datetime.strptime(snap_data['date'][:-5], "%Y-%m-%dT%H:%M:%S")
@@ -114,7 +114,7 @@ if __name__ == "__main__":
                 continue
         target_dt = datetime.strptime(job['time'], "%Y-%m-%dT%H:%M:%S.000%z")
         target_epoch = (target_dt - epoch).total_seconds()
-        bucket_data = rubrik.get('v1', '/host/' + host_id_list[job['src_host']] + '/search?path=' + job['bucket'])
+        bucket_data = rubrik.get('v1', '/host/' + host_id_list[job['src_host']] + '/search?path=' + job['bucket'], timeout=timeout)
         if bucket_data['total'] == 0:
             sys.stderr.write("Bucket not found: " + job['src_host'] + " : " + job['bucket'] + "\n")
             continue
@@ -150,7 +150,7 @@ if __name__ == "__main__":
         job_status_path = "/" + "/".join(job_status_url[5:])
         done = False
         while not done:
-            restore_job_status = rubrik.get('v1', job_status_path)
+            restore_job_status = rubrik.get('v1', job_status_path, timeout=timeout)
             job_status = restore_job_status['status']
             dprint("Status = " + job_status)
             if job_status in ['RUNNING', 'QUEUED', 'ACQUIRING', 'FINISHING']:
