@@ -49,9 +49,9 @@ def find_snap_id(bucket_data, timestamp):
         snap_data = rubrik.get('v1', '/fileset/snapshot/' + snap['snapshotId'] + '?verbose=false', timeout=timeout)
         snap_id = snap_data['id']
         dprint("SNAP_ID: + " + snap_id + " @ " + snap_data['date'])
-        snap_dt = datetime.strptime(snap_data['date'], "%Y-%m-%dT%H:%M:%S.000%z")
+#        snap_dt = datetime.strptime(snap_data['date'], "%Y-%m-%dT%H:%M:%S.000%z")
         snap_dt_naive = datetime.strptime(snap_data['date'][:-5], "%Y-%m-%dT%H:%M:%S")
-        snap_epoch = (snap_dt - epoch).total_seconds()
+        snap_epoch = (snap_dt_naive - epoch_naive).total_seconds()
         dprint("TARGET: " + str(timestamp) + " // SNAP: " + str(snap_epoch) + " : " + snap_id + " @ " + snap_data['date'])
         if snap_epoch >= timestamp:
             return(snap_id, snap_dt_naive)
@@ -68,6 +68,7 @@ if __name__ == "__main__":
     timeout = 60
     host_id_list = {}
     epoch = datetime.strptime("1970-01-01T00:00:00.000+0000", "%Y-%m-%dT%H:%M:%S.000%z")
+    epoch_naive = datetime.strptime("1970-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
     restore_job_list = []
 
     optlist, args = getopt.getopt(sys.argv[1:], 'Dhc:t:i:', ['--DEBUG', '--verbose', '--help', '--creds=', '--token=', '--infile='])
