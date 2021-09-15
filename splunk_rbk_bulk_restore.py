@@ -70,6 +70,7 @@ if __name__ == "__main__":
     epoch = datetime.strptime("1970-01-01T00:00:00.000+0000", "%Y-%m-%dT%H:%M:%S.000%z")
     epoch_naive = datetime.strptime("1970-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
     restore_job_list = []
+    relic_host_list = []
 
     optlist, args = getopt.getopt(sys.argv[1:], 'Dhc:t:i:', ['--DEBUG', '--verbose', '--help', '--creds=', '--token=', '--infile='])
     for opt, a in optlist:
@@ -112,10 +113,12 @@ if __name__ == "__main__":
 #            host_data = rubrik.get('v1', '/host?name=' + job['src_host'], timeout=timeout)
             try:
                 host_id_list[job['src_host']] = host_data['data'][0]['hostId']
+                if host_data['data'][0]['isRelic'] == True:
+                    relic_host_list.append(job['src_host'])
             except:
                 sys.stderr.write("Can't find host: " + job['src_host'] + '\n')
                 continue
-
+        dprint("HOST: " + job['src_host'] + ' // ' + host_id_list[job['src_host']])
         target_dt = datetime.strptime(job['time'], "%Y-%m-%dT%H:%M:%S.000%z")
         target_epoch = (target_dt - epoch).total_seconds()
         bucket_data = rubrik.get('v1', '/host/' + host_id_list[job['src_host']] + '/search?path=' + job['bucket'], timeout=timeout)
@@ -135,10 +138,15 @@ if __name__ == "__main__":
                    'src_host': job['src_host'], 'restore_host': job['restore_host'], 'time': snap_dt_s}
         restore_job_list.append(res_job)
     dprint(restore_job_list)
+    dprint("RELIC_HOST_LIST: " + str(relic_host_list))
     for restore in restore_job_list:
         print("Restoring " + restore['src_host'] + " : " + restore['bucket'] + " from " + restore['time'])
+        if restore['restore_host'] in relic_host_list:
+            sys.stderr.write("Can't restore to a relic host...skipping\n")
+            continue
         if restore['src_host'] == restore['restore_host']:
             payload = {'restoreConfig': [{'path': restore['src_path'], 'restorePath': restore['dest_path']}], 'ignoreErrors': True}
+            dprint("RESTORE_PAYLOAD: " + str(payload))
             res_data = rubrik.post('internal', '/fileset/snapshot/' + restore['snap_id'] + '/restore_files', payload, timeout=timeout)
         else:
             res_host_data = rubrik.get('v1', '/host?name=' + restore['restore_host'], timeout=timeout)
@@ -149,6 +157,7 @@ if __name__ == "__main__":
             except:
                 sys.stderr.write("Can't find restore host: " + restore['restore_host'] + "\n")
                 continue
+            dprint("EXPORT_PAYLOAD:" + str(payload))
             res_data = rubrik.post('internal', '/fileset/snapshot/' + restore['snap_id'] + '/export_files', payload, timeout=timeout)
         job_status_url = str(res_data['links'][0]['href']).split('/')
         job_status_path = "/" + "/".join(job_status_url[5:])
