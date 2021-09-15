@@ -108,12 +108,14 @@ if __name__ == "__main__":
         try:
             host_id_list[job['src_host']]
         except:
-            host_data = rubrik.get('v1', '/host?name=' + job['src_host'], timeout=timeout)
+            host_data = rubrik.get('v1', '/fileset?host_name=' + job['src_host'], timeout=timeout)
+#            host_data = rubrik.get('v1', '/host?name=' + job['src_host'], timeout=timeout)
             try:
-                host_id_list[job['src_host']] = host_data['data'][0]['id']
+                host_id_list[job['src_host']] = host_data['data'][0]['hostId']
             except:
                 sys.stderr.write("Can't find host: " + job['src_host'] + '\n')
                 continue
+
         target_dt = datetime.strptime(job['time'], "%Y-%m-%dT%H:%M:%S.000%z")
         target_epoch = (target_dt - epoch).total_seconds()
         bucket_data = rubrik.get('v1', '/host/' + host_id_list[job['src_host']] + '/search?path=' + job['bucket'], timeout=timeout)
