@@ -48,6 +48,7 @@ def find_snap_id(bucket_data, timestamp):
     for snap in bucket_data['data'][0]['fileVersions']:
         snap_data = rubrik.get('v1', '/fileset/snapshot/' + snap['snapshotId'] + '?verbose=false', timeout=timeout)
         snap_id = snap_data['id']
+        dprint("SNAP_ID: + " + snap_id + " @ " + snap_data['date'])
         snap_dt = datetime.strptime(snap_data['date'], "%Y-%m-%dT%H:%M:%S.000%z")
         snap_dt_naive = datetime.strptime(snap_data['date'][:-5], "%Y-%m-%dT%H:%M:%S")
         snap_epoch = (snap_dt - epoch).total_seconds()
@@ -110,7 +111,7 @@ if __name__ == "__main__":
             try:
                 host_id_list[job['src_host']] = host_data['data'][0]['id']
             except:
-                sys.stderr.write("Can't find host: " + job['src_host'])
+                sys.stderr.write("Can't find host: " + job['src_host'] + '\n')
                 continue
         target_dt = datetime.strptime(job['time'], "%Y-%m-%dT%H:%M:%S.000%z")
         target_epoch = (target_dt - epoch).total_seconds()
