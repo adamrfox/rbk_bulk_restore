@@ -65,7 +65,7 @@ if __name__ == "__main__":
     token = ""
     infile = ""
     job_list = []
-    timeout = 60
+    timeout = 360
     host_id_list = {}
     epoch = datetime.strptime("1970-01-01T00:00:00.000+0000", "%Y-%m-%dT%H:%M:%S.000%z")
     epoch_naive = datetime.strptime("1970-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
